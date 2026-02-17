@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dice Quest</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    text-align: center;
+    margin: 20px;
+}
+
+button {
+    padding: 8px 16px;
+    font-size: 1rem;
+    margin: 5px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: none;
+    background-color: #333;
+    color: white;
+}
+
+#result {
+    font-size: 1.2rem;
+    margin: 20px;
+    min-height: 50px;
+}
+
+.dice-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+    font-size: 20px;
+}
+
+.die {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    font-size: 20px;
+}
+
+.die:hover {
+    transform: scale(1.05);
+}
+
+.selected {
+    outline: 4px solid gold;
+}
+
+.rolling {
+    transform: scale(1.2);
+    box-shadow: 0 0 15px gold;
+}
+
+.fade-out {
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+#selectionCircle {
+    width: 250px;
+    height: 250px;
+    margin: 20px auto;
+    border: 3px ridge #333;
+    border-radius: 50%;
+    background-color: rgba(200,200,200,0.2);
+    position: relative;
+}
+
+#pow {
+    color: red;
+}    
+#spd {
+    color: green;
+}    
+#int {
+    color: purple;
+}    
+#vit {
+    color: blue;
+}    
+#stats{
+    font-size: 20px;
+    font-weight: bold;
+    border: 1px solid black;
+    text-align: center;
+}
+#herocard{
+    font-size: 20px;
+    font-weight: bold;
+    width: 350px;
+    text-align: left;
+    margin: 0 auto;
+}
+#herobox{
+    width: 50%;
+    height: 100%;
+    text-align: center;
+}
+
+#healthbar{
+    vertical-align: center;
+    display: flex;
+}
+
+.bar {
+  width: 90%;
+  border: 1px solid black;
+  border-radius: 8px;
+  background-color: grey;
+}
+
+#myval {
+  height: 20px;
+  width: 89%;
+  border-radius: 8px;
+  border: 1px solid black;
+  background-color: red;
+  font-size: 16px;
+  color:white;
+  display: flex;
+  justify-content: center; /* Centers horizontally */
+  align-items: center;  
+}
+
+
+</style>
+</head>
+
+<body>
+
+<h1>Dice Quest</h1>
+
+<div id="herobox">
+<div id="herocard"><div>Hero</div>
+<div id="healthbar"><div style="width:10%">HP</div><div class="bar"><div id="myval">89/100</div></div>
+</div>
+<div id="stats"><span >POW: </span><span id="pow"></span>&nbsp;&nbsp;<span>SPD: </span><span id="spd"></span>&nbsp;&nbsp;<span>INT: </span><span id="int"></span>&nbsp;&nbsp;<span>VIT: </span><span id="vit"></span></div>
+</div>
+
+<h2 id="info">&nbsp;</h2>
+<div id="selectionCircle"><button id="action" style="opacity: 0"></div>
+
+<div id="diceContainer" class="dice-container"><button id="newdice" onclick="drawDice()">Draw New Dice</button></div>
+
+
+<div id="result"></div>
+<div>
+
+
+<script>
+
+// CONFIG
+const dieTypes = [2,4,6,8,10,12,20];
+const colors = ["red","green","purple","blue"];
+const attackcolors = ["red","green","purple"];
+const defensecolors = ["blue"]
+
+skills ={"pow": 3,"spd": 0, "int": 0, "vit": 3};
+const skillcolors = {"red": "pow", "green":"spd","purple":"int","blue":"vit"};
+for (const key in skills) { document.getElementById(key).textContent=skills[key];}
+
+// CLASS
+class Die {
+    constructor(sides,color,id,value){
+        this.sides = sides;
+        this.color = color;
+        this.id = id;
+        this.value = value;
+    }
+    roll(){
+        return Math.floor(Math.random()*this.sides)+1;
+    }
+}
+
+// BUILD DICE BAG
+const diceBag = [];
+let index = 0;
+
+for(let color of colors){
+    for(let sides of dieTypes){
+        diceBag.push(new Die(sides,color,`die-${color}-${sides}-${index}`));
+        index++;
+    }
+}
+
+// STATE
+let drawnDice = [];
+let selectedDice = [];
+let dieElements = new Map();
+let originalPositions = new Map();
+
+// 🔥 Dynamic Counters
+let selectedColorCounts = {};
+let selectedTypeCounts = {};
+
+const diceContainer = document.getElementById("diceContainer");
+const selectionCircle = document.getElementById("selectionCircle");
+const info = document.getElementById("info");
+
+const result = document.getElementById("result");
+
+// UTIL
+function shuffle(array){
+    for(let i=array.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [array[i],array[j]] = [array[j],array[i]];
+    }
+}
+
+// SHAPES
+function getClipPath(sides){
+    switch(sides){
+        case 2: return "circle(30% at 50% 50%)";
+        case 4: return "polygon(50% 0%, 7% 75%, 93% 75%)";
+        case 6: return "polygon(15% 15%, 85% 15%, 85% 85%, 15% 85%)";
+        case 8: return "polygon(50% 0%, 85% 50%, 50% 100%, 15% 50%)";
+        case 10: return "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)";
+        case 12: return "polygon(50% 5%, 76% 14%, 93% 36%, 93% 64%, 76% 86%, 50% 95%, 24% 86%, 7% 64%, 7% 36%, 24% 14%)";
+        case 20: return "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)";
+        default: return "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)";
+    }
+}
+
+// DRAW
+function drawDice(){
+
+    selectionCircle.innerHTML="";
+    selectionCircle.innerHTML="<button id='action'>";
+    const action = document.getElementById("action");
+    const rect = selectionCircle.getBoundingClientRect();
+    const cx = rect.width/2;
+    const cy = rect.height/2;
+
+        action.style.position="absolute";
+        action.style.left=cx+"px";
+        action.style.top=cy+"px";
+        action.style.transform="translate(-60%, -70%)";
+    action.textContent="Roll";
+    action.onclick=rollSelected;
+    result.textContent="Select up to 5 dice."
+
+    diceContainer.innerHTML="";
+
+    selectedDice = [];
+    dieElements.clear();
+    originalPositions.clear();
+
+    // 🔥 Reset counters dynamically
+    selectedColorCounts = {};
+    selectedTypeCounts = {};
+
+    colors.forEach(c => selectedColorCounts[c] = 0);
+    dieTypes.forEach(t => selectedTypeCounts[t] = 0);
+
+    const bagCopy = [...diceBag];
+    shuffle(bagCopy);
+    drawnDice = bagCopy.slice(0,8);
+
+    drawnDice.forEach((die,index)=>{
+        const dieEl = document.createElement("div");
+        dieEl.classList.add("die");
+        dieEl.style.backgroundColor = die.color;
+        dieEl.textContent = `D${die.sides}`;
+        dieEl.style.clipPath = getClipPath(die.sides);
+
+        dieElements.set(die, dieEl);
+        originalPositions.set(die,index);
+
+        dieEl.addEventListener("click", ()=>toggleSelect(die));
+        diceContainer.appendChild(dieEl);
+    });
+
+    //document.getElementById("result").textContent = "Click dice to select";
+
+    console.log("Color Counts:", selectedColorCounts);
+    console.log("Type Counts:", selectedTypeCounts);
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// SELECT / DESELECT
+function toggleSelect(die){
+    const dieEl = dieElements.get(die);
+
+    if(selectedDice.includes(die)){
+
+        selectedDice = selectedDice.filter(d=>d!==die);
+        selectedColorCounts[die.color]--;
+        selectedTypeCounts[die.sides]--;
+
+        dieEl.classList.remove("selected");
+
+        dieEl.style.position = "";
+        dieEl.style.left = "";
+        dieEl.style.top = "";
+        dieEl.style.transform = "";
+
+        const children = Array.from(diceContainer.children);
+        const index = originalPositions.get(die);
+
+        if(index >= children.length){
+            diceContainer.appendChild(dieEl);
+        } else {
+            diceContainer.insertBefore(dieEl, children[index]);
+        }
+
+    } else {
+
+        if(selectedDice.length>=5) return;
+
+        selectedDice.push(die);
+        selectedColorCounts[die.color]++;
+        selectedTypeCounts[die.sides]++;
+
+        dieEl.classList.add("selected");
+        selectionCircle.appendChild(dieEl);
+    }
+
+    rearrangeCircle();
+
+    // Debug view (console only)
+    console.log("Color Counts:", selectedColorCounts);
+    console.log("Type Counts:", selectedTypeCounts);
+}
+
+// PENTAGON LAYOUT
+function rearrangeCircle(){
+    const rect = selectionCircle.getBoundingClientRect();
+    const cx = rect.width/2;
+    const cy = rect.height/2;
+    const radius = 75;
+    const count = selectedDice.length;
+
+    selectedDice.forEach((die,index)=>{
+        const el = dieElements.get(die);
+        const angle = (index/count)*2*Math.PI - Math.PI/2;
+        const x = cx + radius*Math.cos(angle);
+        const y = cy + radius*Math.sin(angle);
+
+        el.style.position="absolute";
+        el.style.left=x+"px";
+        el.style.top=y+"px";
+        el.style.transform="translate(-50%, -50%)";
+    });
+}
+
+// ROLL
+function animateRoll(die, element){
+    return new Promise(resolve=>{
+        element.classList.add("rolling");
+        document.getElementById("result").innerHTML ="";
+
+        const interval = setInterval(()=>{
+            element.textContent = Math.floor(Math.random()*die.sides)+1;
+        },60);
+
+        setTimeout(()=>{
+            clearInterval(interval);
+            const result = die.roll();
+            element.textContent = result
+            element.classList.remove("rolling");
+            die.value=result;
+            //console.log(die)
+            resolve(result);
+        },800);
+    });
+}
+
+async function rollbonus(){
+
+
+    for (const key in rollcounts){
+
+        //console.log(key)
+        if (rollcounts[key]>1){
+                document.getElementById("info").innerHTML = `<strong>Roll Bonus</strong>`;
+        for (const die of selectedDice){
+            if (die.value==key){ dieElements.get(die).style.color="yellow"; dieElements.get(die).textContent +="x"+rollcounts[key];}
+        }
+        await new Promise(r => setTimeout(r, 500));
+        for (const die of selectedDice){
+            if (die.value==key){ dieElements.get(die).style.color="white"; dieElements.get(die).textContent =key*rollcounts[key];}
+
+        }
+    }
+    }
+
+    if (Math.max(...Object.values(rollcounts))>1) {await new Promise(r => setTimeout(r, 500));}
+
+        for (const die of selectedDice){ die.value=dieElements.get(die).textContent;}
+
+    for (const key in selectedColorCounts){
+        if (selectedColorCounts[key]>1){
+            document.getElementById("info").innerHTML = `<strong>Color Bonus</strong>`;
+            for (const die of selectedDice){
+                if (die.color==key){ 
+                    dieElements.get(die).style.color="yellow"; 
+                    dieElements.get(die).textContent +="+"+selectedColorCounts[key];
+            }
+            }
+            await new Promise(r => setTimeout(r, 500));
+            for (const die of selectedDice){
+                if (die.color==key){ dieElements.get(die).style.color="white"; dieElements.get(die).textContent=Number(die.value)+selectedColorCounts[key];}
+            }
+        }
+    }
+
+    if (Math.max(...Object.values(selectedColorCounts))>1) {await new Promise(r => setTimeout(r, 500));}
+
+    for (const die of selectedDice){ die.value=dieElements.get(die).textContent;}
+
+    for (const key in selectedTypeCounts){
+        if (selectedTypeCounts[key]>1){
+            document.getElementById("info").innerHTML = `<strong>Shape Bonus</strong>`;
+            for (const die of selectedDice){
+                if (die.sides==key){ 
+                    dieElements.get(die).style.color="yellow"; 
+                    dieElements.get(die).textContent +="+"+selectedTypeCounts[key];
+            }
+            }
+            await new Promise(r => setTimeout(r, 500));
+            for (const die of selectedDice){
+                if (die.sides==key){ dieElements.get(die).style.color="white"; dieElements.get(die).textContent=Number(die.value)+selectedTypeCounts[key];}
+            }
+        }
+    }
+
+    if (Math.max(...Object.values(selectedTypeCounts))>1) {await new Promise(r => setTimeout(r, 500));}
+
+    for (const die of selectedDice){ die.value=dieElements.get(die).textContent;}
+
+    for (const key in skillcolors){
+        if ((selectedColorCounts[key]>0) && (skills[skillcolors[key]]>0)){
+            document.getElementById("info").innerHTML = `<strong>Skill Bonus</strong>`;
+            for (const die of selectedDice){
+                if (die.color==key){ 
+                    dieElements.get(die).style.color="yellow"; 
+                    dieElements.get(die).textContent +="+"+skills[skillcolors[key]];
+            }
+            }
+            await new Promise(r => setTimeout(r, 500));
+            for (const die of selectedDice){
+                if (die.color==key){ dieElements.get(die).style.color="white"; dieElements.get(die).textContent=Number(die.value)+skills[skillcolors[key]];}
+            }
+        }
+    }    
+
+    for (key in skillcolors){console.log(skills[skillcolors[key]])}
+
+
+    await new Promise(r => setTimeout(r, 500))
+
+    let totals=[];
+    colors.forEach(k=>totals[k]=0)
+
+    for (const die of selectedDice){ die.value=dieElements.get(die).textContent; totals[die.color]+=Number(die.value); console.log(totals)}
+            document.getElementById("info").innerHTML="Attack:&nbsp;<span id='attack'></span>"
+            //document.getElementById("result").style.align="center"; 
+            attackcolors.forEach(k=>{document.getElementById("attack").innerHTML += "<span style='color: "+k+"'>"+totals[k]+"</span>"; if(attackcolors[attackcolors.length-1] !== k){document.getElementById("attack").innerHTML+="+"}})
+            document.getElementById("info").innerHTML+="&nbsp; Defense:&nbsp;<span id='defense'></span>"
+            defensecolors.forEach(k=>{document.getElementById("defense").innerHTML += "<span style='color: "+k+"'>"+totals[k]+"</span>"; if(defensecolors[defensecolors.length-1] !== k){document.getElementById("defense").innerHTML+="+"}})
+            let attacktotal=0
+            let defensetotal=0
+            attackcolors.forEach(k=>{attacktotal+=totals[k];})
+            defensecolors.forEach(k=>{defensetotal+=totals[k];})
+
+            await new Promise(r => setTimeout(r, 500));
+
+            document.getElementById("attack").innerHTML=attacktotal; document.getElementById("defense").innerHTML=defensetotal;
+
+            await new Promise(r => setTimeout(r, 500));
+
+            diceContainer.innerHTML="<button onclick='drawDice()'>Draw New Dice</button>"
+
+       
+
+
+
+    
+
+
+    //colors.forEach(k=>{document.getElementById("result").innerHTML = "<div color: "+k+">"+totals[k]+"</div>";})
+    
+
+
+    //freq=rollcts[die.value]
+    //if (freq >1) {
+    //    setTimeout(()=>{element.textContent +="x"+freq;},1000)
+    //    element.textContent=(freq*die.value);
+
+    
+}
+
+async function rollSelected(){
+    const action = document.getElementById("action");
+
+
+    if(selectedDice.length===0){
+        document.getElementById("result").textContent="Select at least one die!";
+        return;
+    } 
+    else { action.style.opacity=0;
+    //action.textContent="Rolling";
+    action.onclick=null;
+    }
+
+    drawnDice.forEach(d=>{
+        if(!selectedDice.includes(d)){
+            dieElements.get(d).classList.add("fade-out");
+        }
+    });
+
+    await new Promise(r=>setTimeout(r,300));
+
+    let total=0;
+    const rolls = await Promise.all(
+        selectedDice.map(d=>animateRoll(d, dieElements.get(d)))
+    );
+
+
+    console.log(rolls)
+
+    rollcounts = rolls.reduce((obj, item) => {
+        obj[item] = (obj[item] || 0) + 1;
+        return obj;
+    }, {});
+
+    console.log(rollcounts)
+
+    
+    setTimeout(()=>{rollbonus()},500)
+
+
+
+
+    //document.getElementById("result").innerHTML = `<strong>Total: ${total}</strong>`;
+}
+
+// INIT
+//drawDice();
+
+</script>
+</body>
+</html>
