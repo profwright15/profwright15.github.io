@@ -56,12 +56,12 @@ button {
 }
 
 .selected {
-    outline: 4px solid gold;
+    /*outline: 4px solid gold;*/
 }
 
 .rolling {
     transform: scale(1.2);
-    box-shadow: 0 0 15px gold;
+    /*box-shadow: 0 0 15px gold;*/
 }
 
 .fade-out {
@@ -233,6 +233,57 @@ function getClipPath(sides){
         default: return "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)";
     }
 }
+function setSVGSize(svgElement, width, height) {
+    // Set width and height attributes
+    svgElement.setAttribute("width", width);
+    svgElement.setAttribute("height", height);
+    
+    // Ensure the viewBox attribute is present for correct scaling
+    // (If the original file is missing it, you may need to define it based on its content)
+}
+
+async function loadSVG(filename, container,w,h,sides) {
+    try {
+        // 1. Fetch the SVG file content from the server
+        const response = await fetch(filename);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const svgText = await response.text();
+
+        // 2. Get the target container div
+        //const container = document.getElementById(containerId);
+
+        if (container) {
+            // 3. Insert the raw SVG markup into the div
+            container.innerHTML = svgText;
+            console.log("SVG loaded successfully!");
+            const svgElement = container.querySelector('svg');
+
+            if (svgElement) {
+            // Proceed to Step 2 to change the size
+                setSVGSize(svgElement, w, h);
+
+        		//svgElement.style='z-index:-100'
+        		svgElement.setAttribute('viewBox', '-90 -90 180 180');
+        		const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+				svgElement.appendChild(text);
+				text.setAttribute("x", -1);
+				text.setAttribute("y", 0);
+				text.setAttribute("fill", 'white');
+				text.setAttribute("text-anchor","middle")
+				text.setAttribute("alignment-baseline","middle")
+				text.setAttribute("font-size", 30);
+				text.textContent = sides;
+        }
+        } else {
+            console.error(`Container with ID "${containerId}" not found.`);
+        }
+
+    } catch (error) {
+        console.error("Error loading the SVG file:", error);
+    }
+}
 
 // DRAW
 function drawDice(){
@@ -271,15 +322,19 @@ function drawDice(){
 
     drawnDice.forEach((die,index)=>{
         const dieEl = document.createElement("div");
-        dieEl.classList.add("die");
-        dieEl.style.backgroundColor = die.color;
+        //dieEl.classList.add("die");
+        //dieEl.style.backgroundColor = die.color;
         dieEl.textContent = `D${die.sides}`;
-        dieEl.style.clipPath = getClipPath(die.sides);
+        //dieEl.style.clipPath = getClipPath(die.sides);
 
         dieElements.set(die, dieEl);
         originalPositions.set(die,index);
 
         dieEl.addEventListener("click", ()=>toggleSelect(die));
+        file='dice/d'+die.sides+die.color+'2.svg';
+        console.log(file)
+        loadSVG(file,dieEl,80,80,die.sides)
+
         diceContainer.appendChild(dieEl);
     });
 
@@ -363,16 +418,18 @@ function rearrangeCircle(){
 function animateRoll(die, element){
     return new Promise(resolve=>{
         element.classList.add("rolling");
+        const svg=element.querySelector('svg');
+        const text=svg.querySelector('text');
         document.getElementById("result").innerHTML ="";
 
         const interval = setInterval(()=>{
-            element.textContent = Math.floor(Math.random()*die.sides)+1;
+            text.textContent = Math.floor(Math.random()*die.sides)+1;
         },60);
 
         setTimeout(()=>{
             clearInterval(interval);
             const result = die.roll();
-            element.textContent = result
+            text.textContent = result
             element.classList.remove("rolling");
             die.value=result;
             //console.log(die)
@@ -383,79 +440,113 @@ function animateRoll(die, element){
 
 async function rollbonus(){
 
-
+    rbonustext=0;
     for (const key in rollcounts){
 
         //console.log(key)
         if (rollcounts[key]>1){
-                document.getElementById("info").innerHTML = `<strong>Roll Bonus</strong>`;
+            if (rbonustext==0){await new Promise(r => setTimeout(r, 600)); document.getElementById("info").innerHTML = `<strong>Roll Bonus</strong>`;rbonustext=1;}
+                
         for (const die of selectedDice){
-            if (die.value==key){ dieElements.get(die).style.color="yellow"; dieElements.get(die).textContent +="x"+rollcounts[key];}
+        	const element=dieElements.get(die)
+        	const svg=element.querySelector('svg');
+        	const text=svg.querySelector('text');
+            if (die.value==key){ text.setAttribute("fill", 'yellow'); text.textContent +="x"+rollcounts[key];}
         }
         await new Promise(r => setTimeout(r, 500));
         for (const die of selectedDice){
-            if (die.value==key){ dieElements.get(die).style.color="white"; dieElements.get(die).textContent =key*rollcounts[key];}
+        	const element=dieElements.get(die)
+        	const svg=element.querySelector('svg');
+        	const text=svg.querySelector('text');
+            if (die.value==key){ text.setAttribute("fill", 'white');  text.textContent =key*rollcounts[key];}
 
         }
     }
     }
 
-    if (Math.max(...Object.values(rollcounts))>1) {await new Promise(r => setTimeout(r, 500));}
+    if (Math.max(...Object.values(rollcounts))>1) {await new Promise(r => setTimeout(r, 600));document.getElementById("info").innerHTML = `<strong>Color Bonus</strong>`;}
 
         for (const die of selectedDice){ die.value=dieElements.get(die).textContent;}
 
+    cbonustext=0;
     for (const key in selectedColorCounts){
         if (selectedColorCounts[key]>1){
-            document.getElementById("info").innerHTML = `<strong>Color Bonus</strong>`;
+            
             for (const die of selectedDice){
+            	const element=dieElements.get(die)
+        		const svg=element.querySelector('svg');
+        		const text=svg.querySelector('text');
                 if (die.color==key){ 
-                    dieElements.get(die).style.color="yellow"; 
-                    dieElements.get(die).textContent +="+"+selectedColorCounts[key];
+                    text.setAttribute("fill", 'yellow');
+                    text.textContent +="+"+selectedColorCounts[key];
             }
             }
             await new Promise(r => setTimeout(r, 500));
             for (const die of selectedDice){
-                if (die.color==key){ dieElements.get(die).style.color="white"; dieElements.get(die).textContent=Number(die.value)+selectedColorCounts[key];}
+            	const element=dieElements.get(die)
+        		const svg=element.querySelector('svg');
+        		const text=svg.querySelector('text');
+                if (die.color==key){ text.setAttribute("fill", 'white'); text.textContent=Number(die.value)+selectedColorCounts[key];}
             }
         }
     }
 
     if (Math.max(...Object.values(selectedColorCounts))>1) {await new Promise(r => setTimeout(r, 500));}
 
-    for (const die of selectedDice){ die.value=dieElements.get(die).textContent;}
+    for (const die of selectedDice){ 
+    	        const element=dieElements.get(die)
+        		const svg=element.querySelector('svg');
+        		const text=svg.querySelector('text');
+        		die.value=text.textContent;}
 
     for (const key in selectedTypeCounts){
         if (selectedTypeCounts[key]>1){
             document.getElementById("info").innerHTML = `<strong>Shape Bonus</strong>`;
             for (const die of selectedDice){
+            	const element=dieElements.get(die)
+        		const svg=element.querySelector('svg');
+        		const text=svg.querySelector('text');
                 if (die.sides==key){ 
-                    dieElements.get(die).style.color="yellow"; 
-                    dieElements.get(die).textContent +="+"+selectedTypeCounts[key];
+                    text.setAttribute("fill", "yellow"); 
+                    text.textContent +="+"+selectedTypeCounts[key];
             }
             }
             await new Promise(r => setTimeout(r, 500));
             for (const die of selectedDice){
-                if (die.sides==key){ dieElements.get(die).style.color="white"; dieElements.get(die).textContent=Number(die.value)+selectedTypeCounts[key];}
+            	const element=dieElements.get(die)
+        		const svg=element.querySelector('svg');
+        		const text=svg.querySelector('text');
+                if (die.sides==key){ text.setAttribute("fill","white"); text.textContent=Number(die.value)+selectedTypeCounts[key];}
             }
         }
     }
 
     if (Math.max(...Object.values(selectedTypeCounts))>1) {await new Promise(r => setTimeout(r, 500));}
 
-    for (const die of selectedDice){ die.value=dieElements.get(die).textContent;}
+    for (const die of selectedDice){ 
+    	const element=dieElements.get(die)
+        const svg=element.querySelector('svg');
+        const text=svg.querySelector('text');
+        die.value=text.textContent;}
 
     for (const key in skillcolors){
         if ((selectedColorCounts[key]>0) && (skills[skillcolors[key]]>0)){
             document.getElementById("info").innerHTML = `<strong>Skill Bonus</strong>`;
             for (const die of selectedDice){
+            	const element=dieElements.get(die)
+        		const svg=element.querySelector('svg');
+        		const text=svg.querySelector('text');
                 if (die.color==key){ 
-                    dieElements.get(die).style.color="yellow"; 
-                    dieElements.get(die).textContent +="+"+skills[skillcolors[key]];
+                    text.setAttribute("fill","yellow"); 
+                    text.textContent +="+"+skills[skillcolors[key]];
             }
             }
             await new Promise(r => setTimeout(r, 500));
             for (const die of selectedDice){
-                if (die.color==key){ dieElements.get(die).style.color="white"; dieElements.get(die).textContent=Number(die.value)+skills[skillcolors[key]];}
+            	const element=dieElements.get(die)
+        		const svg=element.querySelector('svg');
+        		const text=svg.querySelector('text');
+                if (die.color==key){ text.setAttribute("fill","white"); ; text.textContent=Number(die.value)+skills[skillcolors[key]];}
             }
         }
     }    
@@ -468,7 +559,12 @@ async function rollbonus(){
     let totals=[];
     colors.forEach(k=>totals[k]=0)
 
-    for (const die of selectedDice){ die.value=dieElements.get(die).textContent; totals[die.color]+=Number(die.value); console.log(totals)}
+    for (const die of selectedDice){
+    			const element=dieElements.get(die)
+        		const svg=element.querySelector('svg');
+        		const text=svg.querySelector('text'); 
+        		die.value=text.textContent; totals[die.color]+=Number(die.value); console.log(totals)
+        	}
             document.getElementById("info").innerHTML="Attack:&nbsp;<span id='attack'></span>"
             //document.getElementById("result").style.align="center"; 
             attackcolors.forEach(k=>{document.getElementById("attack").innerHTML += "<span style='color: "+k+"'>"+totals[k]+"</span>"; if(attackcolors[attackcolors.length-1] !== k){document.getElementById("attack").innerHTML+="+"}})
@@ -542,8 +638,9 @@ async function rollSelected(){
 
     console.log(rollcounts)
 
+    //await new Promise(r => setTimeout(r, 700))
     
-    setTimeout(()=>{rollbonus()},500)
+    rollbonus();
 
 
 
