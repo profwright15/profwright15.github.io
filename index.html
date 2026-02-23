@@ -268,7 +268,7 @@ async function loadSVG(filename, container,w,h,sides) {
         		svgElement.setAttribute('viewBox', '-90 -90 180 180');
         		const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 				svgElement.appendChild(text);
-				text.setAttribute("x", -2);
+				text.setAttribute("x", -1);
 				text.setAttribute("y", 2);
 				text.setAttribute("fill", 'white');
 				text.setAttribute("text-anchor","middle")
@@ -287,6 +287,7 @@ async function loadSVG(filename, container,w,h,sides) {
 
 // DRAW
 function drawDice(){
+	info.innerHTML='&nbsp;';
 
     selectionCircle.innerHTML="";
     selectionCircle.innerHTML="<button id='action'>";
@@ -445,7 +446,7 @@ async function rollbonus(){
 
         //console.log(key)
         if (rollcounts[key]>1){
-            if (rbonustext==0){await new Promise(r => setTimeout(r, 600)); document.getElementById("info").innerHTML = `<strong>Roll Bonus</strong>`;rbonustext=1;}
+            if (rbonustext==0){document.getElementById("info").innerHTML = `<strong>Roll Bonus</strong>`;rbonustext=1;}
                 
         for (const die of selectedDice){
         	const element=dieElements.get(die)
@@ -464,14 +465,14 @@ async function rollbonus(){
     }
     }
 
-    if (Math.max(...Object.values(rollcounts))>1) {await new Promise(r => setTimeout(r, 600));document.getElementById("info").innerHTML = `<strong>Color Bonus</strong>`;}
+    if (Math.max(...Object.values(rollcounts))>1) {await new Promise(r => setTimeout(r, 600));}
 
         for (const die of selectedDice){ die.value=dieElements.get(die).textContent;}
 
     cbonustext=0;
     for (const key in selectedColorCounts){
         if (selectedColorCounts[key]>1){
-            
+            document.getElementById("info").innerHTML = `<strong>Color Bonus</strong>`;
             for (const die of selectedDice){
             	const element=dieElements.get(die)
         		const svg=element.querySelector('svg');
@@ -639,7 +640,7 @@ async function rollSelected(){
     console.log(rollcounts)
 
     //await new Promise(r => setTimeout(r, 700))
-    
+    await new Promise(r=>setTimeout(r,600));
     rollbonus();
 
 
