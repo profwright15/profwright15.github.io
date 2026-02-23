@@ -270,7 +270,11 @@ async function loadSVG(filename, container,w,h,sides) {
 				svgElement.appendChild(text);
 				text.setAttribute("x", -1);
 				text.setAttribute("y", 2);
+                text.setAttribute("paint-order", "stroke")
+                text.setAttribute("stroke", 'black');
+                text.setAttribute("stroke-width", '6px');
 				text.setAttribute("fill", 'white');
+
 				text.setAttribute("text-anchor","middle")
 				text.setAttribute("alignment-baseline","middle")
 				text.setAttribute("font-size", 30);
@@ -333,7 +337,7 @@ function drawDice(){
         originalPositions.set(die,index);
 
         dieEl.addEventListener("click", ()=>toggleSelect(die));
-        file='dice/d'+die.sides+die.color+'2.svg';
+        file='dice/d'+die.sides+die.color+'.svg';
         console.log(file)
         loadSVG(file,dieEl,80,80,die.sides)
 
