@@ -337,7 +337,7 @@ function drawDice(){
         originalPositions.set(die,index);
 
         dieEl.addEventListener("click", ()=>toggleSelect(die));
-        file='dice/d'+die.sides+die.color+'.svg';
+        file='dice/d'+die.sides+'/d'+die.sides+die.color+'.svg';
         console.log(file)
         loadSVG(file,dieEl,80,80,die.sides)
 
