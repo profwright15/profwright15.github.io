@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Dice Quest</title>
+<title>Die Wrecked Questin'</title>
 
 <style>
 body {
@@ -141,7 +141,7 @@ button {
 
 <body>
 
-<h1>Dice Quest</h1>
+<h1>Die Wrecked Questin'</h1>
 
 <div id="herobox">
 <div id="herocard"><div>Hero</div>
@@ -268,8 +268,8 @@ async function loadSVG(filename, container,w,h,sides) {
         		svgElement.setAttribute('viewBox', '-90 -90 180 180');
         		const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 				svgElement.appendChild(text);
-				text.setAttribute("x", -1);
-				text.setAttribute("y", 0);
+				text.setAttribute("x", -2);
+				text.setAttribute("y", 2);
 				text.setAttribute("fill", 'white');
 				text.setAttribute("text-anchor","middle")
 				text.setAttribute("alignment-baseline","middle")
@@ -424,7 +424,7 @@ function animateRoll(die, element){
 
         const interval = setInterval(()=>{
             text.textContent = Math.floor(Math.random()*die.sides)+1;
-        },60);
+        },80);
 
         setTimeout(()=>{
             clearInterval(interval);
